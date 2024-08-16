@@ -75,13 +75,15 @@ def main(_):
       "text-bison",
       "gpt-3.5-turbo",
       "gpt-4",
-  }
+  } or optimizer_llm_name.startswith("bedrock")
   openai_api_key = _OPENAI_API_KEY.value
   palm_api_key = _PALM_API_KEY.value
 
   if optimizer_llm_name in {"gpt-3.5-turbo", "gpt-4"}:
     assert openai_api_key, "The OpenAI API key must be provided."
     openai.api_key = openai_api_key
+  elif optimizer_llm_name.startswith("bedrock"):
+    pass
   else:
     assert optimizer_llm_name == "text-bison"
     assert (
