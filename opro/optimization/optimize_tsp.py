@@ -142,6 +142,21 @@ def main(_):
     optimizer_llm_dict.update(optimizer_finetuned_palm_dict)
     call_optimizer_server_func = call_optimizer_finetuned_palm_server_func
 
+  elif optimizer_llm_name.startswith("bedrock"):
+    optimizer_bedrock_max_decode_steps = 1024
+    optimizer_bedrock_temperature = 1.0
+
+    optimizer_llm_dict = dict()
+    optimizer_llm_dict["max_decode_steps"] = optimizer_bedrock_max_decode_steps
+    optimizer_llm_dict["temperature"] = optimizer_bedrock_temperature
+    optimizer_llm_dict["batch_size"] = 1
+    call_optimizer_server_func = functools.partial(
+        prompt_utils.call_amazon_bedrock_func,
+        model=optimizer_llm_name.split("/")[-1],
+        max_decode_steps=optimizer_bedrock_max_decode_steps,
+        temperature=optimizer_bedrock_temperature,
+    )
+
   else:
     assert optimizer_llm_name in {"gpt-3.5-turbo", "gpt-4"}
     optimizer_gpt_max_decode_steps = 1024
