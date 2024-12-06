@@ -16,6 +16,7 @@
 import time
 import google.generativeai as palm
 import openai
+import boto3
 
 
 def call_openai_server_single_prompt(
@@ -130,3 +131,63 @@ def call_palm_server_from_cloud(
     return call_palm_server_from_cloud(
         input_text, max_decode_steps=max_decode_steps, temperature=temperature
     )
+
+
+def call_amazon_bedrock_single_prompt(
+    prompt, model="anthropic.claude-3-sonnet-20240229-v1:0", max_decode_steps=20, temperature=0.8
+):
+  """Makes a call to Amazon Bedrock via Converse API."""
+  bedrock_runtime = boto3.client('bedrock-runtime')
+  try:
+    response = bedrock_runtime.converse(
+        modelId=model,
+        inferenceConfig={
+          "temperature": temperature,
+          "maxTokens": max_decode_steps
+		},
+        messages=[{
+            "role": "user",
+            "content": [{
+                "text": prompt
+			}]
+        }]
+    )
+    return response["output"]["message"]["content"][0]["text"]
+
+  except (bedrock_runtime.exceptions.ModelTimeoutException,
+          bedrock_runtime.exceptions.ThrottlingException,
+          bedrock_runtime.exceptions.ServiceUnavailableException) as e:
+    retry_time = e.retry_after if hasattr(e, "retry_after") else 30
+    print(f"{e} occurred. Retrying in {retry_time} seconds...")
+    time.sleep(retry_time)
+    return call_amazon_bedrock_single_prompt(
+        prompt, max_decode_steps=max_decode_steps, temperature=temperature
+    )
+
+  except OSError as e:
+    retry_time = 5  # Adjust the retry time as needed
+    print(
+        f"Connection error occurred: {e}. Retrying in {retry_time} seconds..."
+    )
+    time.sleep(retry_time)
+    return call_amazon_bedrock_single_prompt(
+        prompt, max_decode_steps=max_decode_steps, temperature=temperature
+    )
+
+
+def call_amazon_bedrock_func(
+    inputs, model="anthropic.claude-3-sonnet-20240229-v1:0", max_decode_steps=20, temperature=0.8
+):
+  """Function to call Amazon Bedrock with a list of input strings."""
+  if isinstance(inputs, str):
+    inputs = [inputs]
+  outputs = []
+  for input_str in inputs:
+    output = call_amazon_bedrock_single_prompt(
+        input_str,
+        model=model,
+        max_decode_steps=max_decode_steps,
+        temperature=temperature,
+    )
+    outputs.append(output)
+  return outputs

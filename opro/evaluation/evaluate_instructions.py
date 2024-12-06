@@ -269,6 +269,29 @@ def main(_):
     scorer_llm_dict.update(scorer_finetuned_palm_dict)
     call_scorer_server_func = call_scorer_finetuned_palm_server_func
 
+  elif scorer_llm_name.startswith("bedrock"):
+    # Amazon Bedrock models
+    scorer_bedrock_max_decode_steps = 1024
+    scorer_bedrock_temperature = 0.0
+
+    scorer_bedrock_dict = dict()
+    scorer_bedrock_dict["max_decode_steps"] = scorer_bedrock_max_decode_steps
+    scorer_bedrock_dict["temperature"] = scorer_bedrock_temperature
+    scorer_bedrock_dict["num_decodes"] = 1
+    scorer_bedrock_dict["batch_size"] = 1
+    scorer_bedrock_dict["num_servers"] = 1
+
+    scorer_llm_dict = {
+        "model_type": scorer_llm_name,
+    }
+    scorer_llm_dict.update(scorer_bedrock_dict)
+    call_scorer_server_func = functools.partial(
+        prompt_utils.call_amazon_bedrock_func,
+        model=scorer_llm_name.split("/")[-1],
+        max_decode_steps=scorer_bedrock_max_decode_steps,
+        temperature=scorer_bedrock_temperature,
+    )
+
   else:
     # GPT models
     assert scorer_llm_name.lower() in {"gpt-3.5-turbo", "gpt-4"}

@@ -160,12 +160,12 @@ def main(_):
       "text-bison",
       "gpt-3.5-turbo",
       "gpt-4",
-  }
+  } or scorer_llm_name.startswith("bedrock")
   assert optimizer_llm_name in {
       "text-bison",
       "gpt-3.5-turbo",
       "gpt-4",
-  }
+  } or optimizer_llm_name.startswith("bedrock")
   assert meta_prompt_type in {
       "both_instructions_and_exemplars",
       "instructions_only",
@@ -191,6 +191,10 @@ def main(_):
   if scorer_llm_name in {"gpt-3.5-turbo", "gpt-4"}:
     assert openai_api_key, "The OpenAI API key must be provided."
     openai.api_key = openai_api_key
+  elif scorer_llm_name.startswith("bedrock"):
+    # For more information on how to configure boto3 credentials, see
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
+    pass
   else:
     assert scorer_llm_name == "text-bison"
     assert (
@@ -201,6 +205,8 @@ def main(_):
   if optimizer_llm_name in {"gpt-3.5-turbo", "gpt-4"}:
     assert openai_api_key, "The OpenAI API key must be provided."
     openai.api_key = openai_api_key
+  elif optimizer_llm_name.startswith("bedrock"):
+    pass
   else:
     assert optimizer_llm_name == "text-bison"
     assert (
@@ -274,6 +280,29 @@ def main(_):
     scorer_llm_dict.update(scorer_finetuned_palm_dict)
     call_scorer_server_func = call_scorer_finetuned_palm_server_func
 
+  elif scorer_llm_name.startswith("bedrock"):
+    # Amazon Bedrock models
+    scorer_bedrock_max_decode_steps = 1024
+    scorer_bedrock_temperature = 0.0
+
+    scorer_bedrock_dict = dict()
+    scorer_bedrock_dict["max_decode_steps"] = scorer_bedrock_max_decode_steps
+    scorer_bedrock_dict["temperature"] = scorer_bedrock_temperature
+    scorer_bedrock_dict["num_decodes"] = 1
+    scorer_bedrock_dict["batch_size"] = 1
+    scorer_bedrock_dict["num_servers"] = 1
+
+    scorer_llm_dict = {
+        "model_type": scorer_llm_name,
+    }
+    scorer_llm_dict.update(scorer_bedrock_dict)
+    call_scorer_server_func = functools.partial(
+        prompt_utils.call_amazon_bedrock_func,
+        model=scorer_llm_name.split("/")[-1],
+        max_decode_steps=scorer_bedrock_max_decode_steps,
+        temperature=scorer_bedrock_temperature,
+    )
+
   else:
     assert scorer_llm_name.lower() in {"gpt-3.5-turbo", "gpt-4"}
     scorer_gpt_max_decode_steps = 1024
@@ -334,6 +363,22 @@ def main(_):
     }
     optimizer_llm_dict.update(optimizer_finetuned_palm_dict)
     call_optimizer_server_func = call_optimizer_finetuned_palm_server_func
+
+  elif optimizer_llm_name.startswith("bedrock"):
+    optimizer_bedrock_max_decode_steps = 512
+    optimizer_bedrock_temperature = 1.0
+
+    optimizer_llm_dict = dict()
+    optimizer_llm_dict["max_decode_steps"] = optimizer_bedrock_max_decode_steps
+    optimizer_llm_dict["temperature"] = optimizer_bedrock_temperature
+    optimizer_llm_dict["batch_size"] = 1
+    optimizer_llm_dict["num_decodes"] = 1
+    call_optimizer_server_func = functools.partial(
+        prompt_utils.call_amazon_bedrock_func,
+        model=optimizer_llm_name.split("/")[-1],
+        max_decode_steps=optimizer_bedrock_max_decode_steps,
+        temperature=optimizer_bedrock_temperature,
+    )
 
   else:
     assert optimizer_llm_name in {"gpt-3.5-turbo", "gpt-4"}
@@ -679,14 +724,16 @@ def main(_):
   )
 
   # ========== set other optimization experiment hyperparameters ==============
-  if scorer_llm_name == "text-bison":
+  if scorer_llm_name == "text-bison" or \
+     scorer_llm_name.startswith("bedrock"):
     old_instruction_score_threshold = 0.0
     # old_instruction_score_threshold = 0.15  # for GSM8K
   else:
     assert scorer_llm_name in {"gpt-3.5-turbo", "gpt-4"}
     old_instruction_score_threshold = 0.3
 
-  if scorer_llm_name == "text-bison":
+  if scorer_llm_name == "text-bison" or \
+     scorer_llm_name.startswith("bedrock"):
     extract_final_answer_by_prompting_again = False
     include_qa = False
     evaluate_in_parallel = False

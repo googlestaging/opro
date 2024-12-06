@@ -20,6 +20,7 @@ The code has been verified to work under `Python 3.10.13` with the following dep
 - google.generativeai (0.1.0)
 - immutabledict (3.0.0)
 - openai (0.27.2)
+- boto3 (1.34.162)
 ```
 
 ## Usage
