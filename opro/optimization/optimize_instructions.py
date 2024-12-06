@@ -58,6 +58,7 @@ import numpy as np
 import openai
 from opro import prompt_utils
 from opro.optimization import opt_utils
+from opro.evaluation import eval_utils
 import pandas as pd
 
 ROOT_DATA_FOLDER_PATH = os.path.join(OPRO_ROOT_PATH, "data")
@@ -616,7 +617,7 @@ def main(_):
       raw_data = pd.concat([raw_data, single_task_df])
     elif dataset_name == "bbh":
       task_name = t
-      single_task_list = opt_utils.load_bbh_task_data(
+      single_task_list = eval_utils.load_bbh_task_data(
           task_name, base_dir=root_data_folder_path
       )
       raw_data += single_task_list
